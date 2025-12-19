@@ -48,7 +48,7 @@ source ~/venv/bin/activate
 These dependencies are installed as part of the setup process but should you need to install them again, first make sure that the Python 3.9 virtual environment is activated and then use the `make install` command:
 
 ```bash
-make install
+make install and do it
 ```
 
 ### Starting the Postgres Docker container
