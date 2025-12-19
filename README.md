@@ -1,126 +1,237 @@
-# DevOps Capstone Project
+# DevOps Capstone Project – End-to-End CI/CD on Kubernetes
 
-![Build Status](https://github.com/SaifRiaz3256/devops-capstone-project/actions/workflows/ci-build.yaml/badge.svg)
+## Overview
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.9](https://img.shields.io/badge/Python-3.9-green.svg)](https://shields.io/)
+This repository contains a complete **end-to-end DevOps practice project** demonstrating how to build, test, containerize, and deploy a Python microservice using **modern cloud-native DevOps tooling**.
 
-This repository contains the starter code for the project in [**IBM-CD0285EN-SkillsNetwork DevOps Capstone Project**](https://www.coursera.org/learn/devops-capstone-project?specialization=devops-and-software-engineering) which is part of the [**IBM DevOps and Software Engineering Professional Certificate**](https://www.coursera.org/professional-certificates/devops-and-software-engineering)
+The project showcases a **production-grade CI/CD pipeline** implemented with **Tekton**, deployment on **OpenShift (Kubernetes)**, secure containerization with **Docker**, and automated quality gates using **linting and unit tests**.
 
-## Usage
+This repository is suitable for:
 
-You should use this template to start your DevOps Capstone project. It contains all of the code that you will need to get started.
+* DevOps engineers learning CI/CD
+* Cloud engineers practicing Kubernetes & OpenShift
+* Software engineers transitioning to DevOps
+* Interview / portfolio demonstration
 
-Do Not fork this code! It is meant to be used by pressing the  <span style=color:white;background:green>**Use this Template**</span> button in GitHub. This will copy the code to your own repository with no connection back to the original repository like a fork would. This is what you want.
+---
 
-## Development Environment
+## Architecture at a Glance
 
-These labs are designed to be executed in the IBM Developer Skills Network Cloud IDE with OpenShift. Please use the links provided in the Coursera Capstone project to access the lab environment.
+```
+GitHub Repo
+   │
+   ▼
+Tekton Pipeline (CI/CD)
+   ├── Clone Source
+   ├── Lint (flake8)
+   ├── Test (nosetests)
+   ├── Build Image (buildah)
+   └── Deploy to OpenShift
+          │
+          ▼
+Kubernetes Deployment (3 replicas)
+   │
+   ▼
+PostgreSQL (OpenShift Template)
+```
 
-Once you are in the lab environment, you can initialize it with `bin/setup.sh` by sourcing it. (*Note: DO NOT run this program as a bash script. It sets environment variable and so must be sourced*):
+---
+
+## Technology Stack
+
+| Layer            | Technology       |
+| ---------------- | ---------------- |
+| Language         | Python 3.9       |
+| Framework        | Flask            |
+| WSGI Server      | Gunicorn         |
+| Database         | PostgreSQL       |
+| Containerization | Docker           |
+| CI/CD            | Tekton Pipelines |
+| Container Build  | Buildah          |
+| Orchestration    | Kubernetes       |
+| Platform         | OpenShift        |
+| Linting          | flake8           |
+| Testing          | nosetests        |
+
+---
+
+## Project Structure
+
+```
+devops-capstone-project/
+├── service/                 # Flask microservice
+│   ├── __init__.py
+│   ├── routes.py
+│   ├── models.py
+│   ├── config.py
+│   └── common/
+│       ├── error_handlers.py
+│       ├── log_handlers.py
+│       └── status.py
+├── tests/                   # Unit tests
+│   ├── test_models.py
+│   └── test_routes.py
+├── deploy/                  # Kubernetes manifests
+│   ├── deployment.yaml
+│   └── service.yaml
+├── tekton/                  # CI/CD pipeline definitions
+│   ├── pipeline.yaml
+│   ├── tasks.yaml
+│   └── pvc.yaml
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Application Features
+
+* RESTful Flask API
+* PostgreSQL persistence
+* Structured error handling
+* Environment-based configuration
+* Production-ready WSGI deployment
+
+---
+
+## Docker Support
+
+### Dockerfile Highlights
+
+* Uses `python:3.9-slim`
+* Installs dependencies via `requirements.txt`
+* Runs as **non-root user**
+* Uses **Gunicorn** as the entry point
+
+### Build Image
 
 ```bash
-source bin/setup.sh
+docker build -t accounts .
 ```
 
-This will install Python 3.9, make it the default, modify the bash prompt, create a Python virtual environment and activate it.
-
-After sourcing it you prompt should look like this:
+### Run Container
 
 ```bash
-(venv) theia:project$
+docker run --rm -p 8080:8080 \
+  -e DATABASE_URI=postgresql://user:pass@postgres:5432/db \
+  accounts
 ```
 
-## Useful commands
+---
 
-Under normal circumstances you should not have to run these commands. They are performed automatically at setup but may be useful when things go wrong:
+## Kubernetes Deployment
 
-### Activate the Python 3.9 virtual environment
+### PostgreSQL
 
-You can activate the Python 3.9 environment with:
+* Deployed using OpenShift `postgresql-ephemeral` template
+* Credentials injected via Kubernetes Secrets
+
+### Application Deployment
+
+* 3 replicas for high availability
+* Environment variables injected at runtime
+* Service exposed internally and via OpenShift Route
+
+### Verify Deployment
 
 ```bash
-source ~/venv/bin/activate
+oc get all -l app=accounts
 ```
 
-### Installing Python dependencies
+---
 
-These dependencies are installed as part of the setup process but should you need to install them again, first make sure that the Python 3.9 virtual environment is activated and then use the `make install` command:
+## CI/CD with Tekton
+
+### Pipeline Stages
+
+| Stage  | Purpose                             |
+| ------ | ----------------------------------- |
+| clone  | Clone GitHub repository             |
+| lint   | Code linting with flake8            |
+| tests  | Unit tests with nosetests           |
+| build  | Build container image using buildah |
+| deploy | Deploy to OpenShift                 |
+
+### Run Pipeline
 
 ```bash
-make install and do it
+tkn pipeline start cd-pipeline \
+  -p repo-url=https://github.com/<your-account>/devops-capstone-project.git \
+  -p branch=main \
+  -p build-image=image-registry.openshift-image-registry.svc:5000/<namespace>/accounts:latest \
+  -w name=pipeline-workspace,claimName=pipelinerun-pvc \
+  -s pipeline \
+  --showlog
 ```
 
-### Starting the Postgres Docker container
+---
 
-The labs use Postgres running in a Docker container. If for some reason the service is not available you can start it with:
+## Quality Gates
 
-```bash
-make db
-```
+* **Linting enforced**: Pipeline fails on flake8 errors
+* **Unit tests mandatory**: Pipeline stops if tests fail
+* **Build only after validation**
+* **Deploy only after successful build**
 
-You can use the `docker ps` command to make sure that postgres is up and running.
+---
 
-## Project layout
+## Security Best Practices
 
-The code for the microservice is contained in the `service` package. All of the test are in the `tests` folder. The code follows the **Model-View-Controller** pattern with all of the database code and business logic in the model (`models.py`), and all of the RESTful routing on the controller (`routes.py`).
+* Non-root Docker containers
+* Secrets managed via OpenShift
+* No credentials stored in source code
+* Least-privilege execution
 
-```text
-├── service         <- microservice package
-│   ├── common/     <- common log and error handlers
-│   ├── config.py   <- Flask configuration object
-│   ├── models.py   <- code for the persistent model
-│   └── routes.py   <- code for the REST API routes
-├── setup.cfg       <- tools setup config
-└── tests                       <- folder for all of the tests
-    ├── factories.py            <- test factories
-    ├── test_cli_commands.py    <- CLI tests
-    ├── test_models.py          <- model unit tests
-    └── test_routes.py          <- route unit tests
-```
+---
 
-## Data Model
+## Git Workflow
 
-The Account model contains the following fields:
+* Feature branches for each milestone
+* Pull Requests for all changes
+* CI validation before merge
+* Main branch always deployable
 
-| Name | Type | Optional |
-|------|------|----------|
-| id | Integer| False |
-| name | String(64) | False |
-| email | String(64) | False |
-| address | String(256) | False |
-| phone_number | String(32) | True |
-| date_joined | Date | False |
+---
 
-## Your Task
+## Evidence & Verification
 
-Complete this microservice by implementing REST API's for `READ`, `UPDATE`, `DELETE`, and `LIST` while maintaining **95%** code coverage. In true **Test Driven Development** fashion, first write tests for the code you "wish you had", and then write the code to make them pass.
+* Tekton PipelineRun logs
+* Kubernetes resource validation
+* Live service via OpenShift Route
+* Automated, repeatable deployments
 
-## Local Kubernetes Development
+---
 
-This repo can also be used for local Kubernetes development. It is not advised that you run these commands in the Cloud IDE environment. The purpose of these commands are to simulate the Cloud IDE environment locally on your computer. 
+## Learning Outcomes
 
-At a minimum, you will need [Docker Desktop](https://www.docker.com/products/docker-desktop) installed on your computer. For the full development environment, you will also need [Visual Studio Code](https://code.visualstudio.com) with the [Remote Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension from the Visual Studio Marketplace. All of these can be installed manually by clicking on the links above or you can use a package manager like **Homebrew** on Mac of **Chocolatey** on Windows.
+This project demonstrates:
 
-Please only use these commands for working stand-alone on your own computer with the VSCode Remote Container environment provided.
+* End-to-end CI/CD design
+* Kubernetes production deployment
+* Tekton pipeline authoring
+* Container security best practices
+* OpenShift operational workflows
 
-1. Bring up a local K3D Kubernetes cluster
+---
 
-    ```bash
-    $ make cluster
-    ```
+## Future Enhancements
 
-2. Install Tekton
+* GitHub Webhook triggers
+* ArgoCD GitOps deployment
+* Helm charts
+* Prometheus & Grafana monitoring
+* Blue/Green or Canary deployments
 
-    ```bash
-    $ make tekton
-    ```
+---
 
-3. Install the ClusterTasks that the Cloud IDE has
+## License
 
-    ```bash
-    $ make clustertasks
-    ```
+This project is provided for **learning and demonstration purposes**.
 
-You can now perform Tekton development locally, just like in the Cloud IDE lab environment.
+---
 
+## Author
+
+**DevOps Capstone Practice Project**
+Built to demonstrate real-world DevOps engineering skills.
